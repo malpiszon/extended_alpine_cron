@@ -42,6 +42,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=3.19
 
       - name: Build and push
         uses: docker/build-push-action@v5
