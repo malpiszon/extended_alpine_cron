@@ -1,6 +1,7 @@
 name: Build and publish docker image
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "master" ]
   pull_request:
@@ -8,6 +9,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  BUILD_ARGS: |
+    "ALPINE_IMAGE_VERSION=${{ vars.ALPINE_IMAGE_VERSION }}"
 
 jobs:
   build:
@@ -42,13 +45,31 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=3.19
+            type=raw,value=alpine-${{ vars.ALPINE_IMAGE_VERSION }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
+          build-args: |
+            ${{ env.BUILD_ARGS }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Alpine image with extended cron
+
+      - name: Delete all untagged packages
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ github.event.repository.name }}
+          package-type: 'container'
+          min-versions-to-keep: 0
+          delete-only-untagged-versions: 'true'
+
+      - name: Generate build summary
+        run: |
+          ALPINE_IMAGE_VERSION=${{ vars.ALPINE_IMAGE_VERSION }}
+          echo "### Build variables:"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Alpine image version: ${ALPINE_IMAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
