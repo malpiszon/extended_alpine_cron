@@ -1,4 +1,11 @@
-FROM alpine:3.19
+ARG ALPINE_IMAGE_VERSION
+FROM alpine:${ALPINE_IMAGE_VERSION}
+
+ARG ALPINE_IMAGE_VERSION
+LABEL org.opencontainers.image.base.name="alpine:${ALPINE_IMAGE_VERSION}"
+LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.source=https://github.com/malpiszon/extended_alpine_cron
+LABEL org.opencontainers.image.title=extended_alpine_cron
 
 LABEL org.opencontainers.image.base.name=alpine:3.19
 LABEL org.opencontainers.image.licenses=MIT
