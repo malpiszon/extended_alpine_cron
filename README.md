@@ -11,6 +11,15 @@
 - bash
 - curl
 
+### Build variable
+
+- `ALPINE_IMAGE_VERSION` - Alpine base image version.
+
+The GitHub Actions workflow uses this precedence for the Alpine version:
+manual workflow input, then repository variable `ALPINE_IMAGE_VERSION`, then `3.19`.
+
+---
+
 [GitHubPackageBadge]: https://github.com/malpiszon/extended_alpine_cron/actions/workflows/build_and_push.yml/badge.svg
 [GitHubPackageLink]: https://github.com/malpiszon/extended_alpine_cron/pkgs/container/extended_alpine_cron
 [DockerPublishingBadge]: https://github.com/malpiszon/extended_alpine_cron/actions/workflows/build_and_push.yml/badge.svg
