@@ -2,6 +2,10 @@ name: Build and publish docker image
 
 on:
   workflow_dispatch:
+    inputs:
+      alpine_image_version:
+        description: Alpine base image version
+        required: false
   push:
     branches: [ "master" ]
   pull_request:
@@ -9,8 +13,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  BUILD_ARGS: |
-    "ALPINE_IMAGE_VERSION=${{ vars.ALPINE_IMAGE_VERSION }}"
+  ALPINE_IMAGE_VERSION: ${{ github.event.inputs.alpine_image_version || vars.ALPINE_IMAGE_VERSION || '3.19' }}
 
 jobs:
   build:
@@ -29,6 +32,15 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Resolve Alpine base image
+        id: alpine-base
+        shell: bash
+        run: |
+          image="alpine:${ALPINE_IMAGE_VERSION}"
+          digest="$(docker buildx imagetools inspect "${image}" --format '{{.Manifest.Digest}}')"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
         if: github.event_name != 'pull_request'
@@ -55,7 +67,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ github.repository }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=alpine-${{ vars.ALPINE_IMAGE_VERSION }}
+            type=raw,value=alpine-${{ env.ALPINE_IMAGE_VERSION }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -63,13 +75,15 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           build-args: |
-            ${{ env.BUILD_ARGS }}
+            ALPINE_IMAGE_VERSION=${{ env.ALPINE_IMAGE_VERSION }}
+          pull: true
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=Alpine image with extended cron
 
       - name: Delete all untagged packages
+        if: github.event_name != 'pull_request'
         uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ github.event.repository.name }}
@@ -79,7 +93,9 @@ jobs:
 
       - name: Generate build summary
         run: |
-          ALPINE_IMAGE_VERSION=${{ vars.ALPINE_IMAGE_VERSION }}
-          echo "### Build variables:"
+          ALPINE_IMAGE=${{ steps.alpine-base.outputs.image }}
+          ALPINE_IMAGE_DIGEST=${{ steps.alpine-base.outputs.digest }}
+          echo "## Build variables:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- Alpine image version: ${ALPINE_IMAGE_VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- Alpine image: ${ALPINE_IMAGE}" >> $GITHUB_STEP_SUMMARY
+          echo "- Alpine image digest: ${ALPINE_IMAGE_DIGEST}" >> $GITHUB_STEP_SUMMARY
